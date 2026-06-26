@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+.env.local
+*.crx
+*.pem
+.DS_Store
+Thumbs.db
+*.log

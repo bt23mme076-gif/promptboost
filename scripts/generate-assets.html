@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>PromptBoost — Generate Store Assets</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #111; color: #eee; font-family: -apple-system, sans-serif; padding: 32px; }
+  h1 { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+  p  { font-size: 13px; color: #888; margin-bottom: 32px; }
+  .section { margin-bottom: 40px; }
+  .label { font-size: 12px; font-weight: 600; color: #a78bfa; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; }
+  .size  { font-size: 11px; color: #555; margin-left: 8px; }
+  canvas { display: block; border-radius: 4px; max-width: 100%; }
+  .dl { margin-top: 10px; display: inline-block; padding: 8px 20px; background: #7c3aed; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .dl:hover { background: #6d28d9; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, max-content)); gap: 32px; align-items: start; }
+</style>
+</head>
+<body>
+<h1>PromptBoost — Store Assets</h1>
+<p>All images generated below. Click each download button to save the file.</p>
+
+<div class="grid">
+  <div class="section">
+    <div class="label">Store Icon <span class="size">128 × 128</span></div>
+    <canvas id="icon" width="128" height="128"></canvas>
+    <button class="dl" onclick="dl('icon','icon128.png')">⬇ icon128.png</button>
+  </div>
+
+  <div class="section">
+    <div class="label">Small Promo Tile <span class="size">440 × 280</span></div>
+    <canvas id="small" width="440" height="280" style="max-width:440px"></canvas>
+    <button class="dl" onclick="dl('small','small_promo_440x280.png')">⬇ small_promo_440x280.png</button>
+  </div>
+</div>
+
+<div class="section" style="margin-top:8px">
+  <div class="label">Marquee Promo Tile <span class="size">1400 × 560</span></div>
+  <canvas id="marquee" width="1400" height="560" style="max-width:100%"></canvas>
+  <button class="dl" onclick="dl('marquee','marquee_promo_1400x560.png')">⬇ marquee_promo_1400x560.png</button>
+</div>
+
+<div class="section">
+  <div class="label">Screenshot <span class="size">1280 × 800</span></div>
+  <canvas id="screenshot" width="1280" height="800" style="max-width:100%"></canvas>
+  <button class="dl" onclick="dl('screenshot','screenshot_1280x800.png')">⬇ screenshot_1280x800.png</button>
+</div>
+
+<script>
+// ── Helpers ─────────────────────────────────────────────────────────────────
+function lerp(a,b,t){ return a+(b-a)*Math.max(0,Math.min(1,t)); }
+
+function bgGrad(ctx,w,h,r1,g1,b1,r2,g2,b2){
+  const g=ctx.createLinearGradient(0,0,w,h);
+  g.addColorStop(0,`rgb(${r1},${g1},${b1})`);
+  g.addColorStop(1,`rgb(${r2},${g2},${b2})`);
+  return g;
+}
+
+function roundRect(ctx,x,y,w,h,r,fill){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+  if(fill){ ctx.fillStyle=fill; ctx.fill(); }
+}
+
+function drawStar4(ctx,cx,cy,outer,inner){
+  ctx.beginPath();
+  for(let i=0;i<8;i++){
+    const a=i*Math.PI/4 - Math.PI/2;
+    const r=i%2===0?outer:inner;
+    i===0?ctx.moveTo(cx+r*Math.cos(a),cy+r*Math.sin(a))
+         :ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a));
+  }
+  ctx.closePath(); ctx.fill();
+}
+
+function drawWandIcon(ctx, cx, cy, size){
+  const s = size;
+  ctx.save();
+  ctx.translate(cx - s*0.1, cy + s*0.05);
+
+  // Wand handle
+  ctx.strokeStyle='white'; ctx.lineWidth=s*0.09; ctx.lineCap='round';
+  ctx.beginPath();
+  ctx.moveTo(-s*0.28, s*0.28);
+  ctx.lineTo( s*0.12,-s*0.12);
+  ctx.stroke();
+
+  // Big star at tip
+  ctx.fillStyle='white';
+  drawStar4(ctx, s*0.22, -s*0.22, s*0.26, s*0.10);
+
+  // Small sparkle right-bottom
+  ctx.globalAlpha=0.85;
+  drawStar4(ctx, s*0.42, s*0.10, s*0.10, s*0.04);
+
+  // Tiny dot top-left
+  ctx.globalAlpha=0.55;
+  ctx.beginPath();
+  ctx.arc(-s*0.38, -s*0.22, s*0.045, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.restore();
+  ctx.globalAlpha=1;
+}
+
+// ── ICON 128×128 ─────────────────────────────────────────────────────────────
+function drawIcon(){
+  const c=document.getElementById('icon');
+  const ctx=c.getContext('2d');
+  const W=128,H=128;
+
+  // Solid purple background (no alpha — Chrome adds rounding itself)
+  const g=bgGrad(ctx,W,H, 139,92,246, 76,29,149);
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+
+  // Subtle shine
+  const shine=ctx.createRadialGradient(30,20,0,30,20,100);
+  shine.addColorStop(0,'rgba(255,255,255,0.20)');
+  shine.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle=shine; ctx.fillRect(0,0,W,H);
+
+  drawWandIcon(ctx, W/2, H/2, 52);
+}
+
+// ── SMALL PROMO 440×280 ───────────────────────────────────────────────────────
+function drawSmall(){
+  const c=document.getElementById('small');
+  const ctx=c.getContext('2d');
+  const W=440,H=280;
+
+  // Background
+  const g=bgGrad(ctx,W,H, 139,92,246, 55,15,120);
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+
+  // Shine overlay
+  const sh=ctx.createRadialGradient(80,50,0,80,50,220);
+  sh.addColorStop(0,'rgba(255,255,255,0.18)');
+  sh.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle=sh; ctx.fillRect(0,0,W,H);
+
+  // Icon area (left)
+  const ig=bgGrad(ctx,160,160, 168,85,247, 109,40,217);
+  roundRect(ctx,32,60,100,100,22,ig);
+  drawWandIcon(ctx, 82, 110, 38);
+
+  // Text (right)
+  ctx.fillStyle='white';
+  ctx.font='700 28px -apple-system,sans-serif';
+  ctx.fillText('PromptBoost',156,100);
+
+  ctx.fillStyle='rgba(255,255,255,0.7)';
+  ctx.font='400 14px -apple-system,sans-serif';
+  ctx.fillText('AI Prompt Engineer', 156, 126);
+
+  // Divider
+  ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(156,140); ctx.lineTo(410,140); ctx.stroke();
+
+  // Features
+  const features=['✦  One-click prompt improvement','✦  5 modes: Improve, Concise, Technical…','✦  Works on ChatGPT, Claude, Gemini & more','✦  100% free — powered by Groq AI'];
+  ctx.fillStyle='rgba(255,255,255,0.85)';
+  ctx.font='400 13px -apple-system,sans-serif';
+  features.forEach((f,i)=>ctx.fillText(f,156,162+i*24));
+}
+
+// ── MARQUEE 1400×560 ──────────────────────────────────────────────────────────
+function drawMarquee(){
+  const c=document.getElementById('marquee');
+  const ctx=c.getContext('2d');
+  const W=1400,H=560;
+
+  // Background
+  const g=bgGrad(ctx,W,H, 109,40,217, 46,16,101);
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+
+  // Decorative dots
+  ctx.fillStyle='rgba(255,255,255,0.06)';
+  for(let i=0;i<18;i++){
+    ctx.beginPath();
+    ctx.arc(Math.sin(i*1.3)*600+700, Math.cos(i*1.7)*200+280, 60+i*8, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // Left side: Icon + name
+  const ig=bgGrad(ctx,200,200, 168,85,247, 124,58,237);
+  roundRect(ctx,120,160,160,160,36,ig);
+  // Shine on icon box
+  const ish=ctx.createRadialGradient(160,185,0,160,185,120);
+  ish.addColorStop(0,'rgba(255,255,255,0.18)'); ish.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.save(); ctx.beginPath(); roundRect(ctx,120,160,160,160,36); ctx.clip();
+  ctx.fillStyle=ish; ctx.fillRect(120,160,160,160); ctx.restore();
+  drawWandIcon(ctx, 200, 240, 60);
+
+  ctx.fillStyle='white';
+  ctx.font='700 64px -apple-system,sans-serif';
+  ctx.fillText('PromptBoost',320,230);
+
+  ctx.fillStyle='rgba(255,255,255,0.65)';
+  ctx.font='300 26px -apple-system,sans-serif';
+  ctx.fillText('AI Prompt Engineer',322,276);
+
+  // Divider
+  ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(320,310); ctx.lineTo(920,310); ctx.stroke();
+
+  // Tagline
+  ctx.fillStyle='rgba(255,255,255,0.9)';
+  ctx.font='400 22px -apple-system,sans-serif';
+  ctx.fillText('Transform rough prompts into professionally engineered AI prompts — instantly.',322,356);
+
+  // Feature chips
+  const chips=['✦ One-click improve','✦ 5 modes','✦ 10+ AI platforms','✦ 100% Free'];
+  let cx2=322;
+  chips.forEach(ch=>{
+    const tw=ctx.measureText(ch).width;
+    roundRect(ctx,cx2,390,tw+28,38,19,'rgba(255,255,255,0.12)');
+    ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=1;
+    roundRect(ctx,cx2,390,tw+28,38,19);
+    ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,0.9)';
+    ctx.font='500 15px -apple-system,sans-serif';
+    ctx.fillText(ch,cx2+14,415);
+    cx2+=tw+48;
+  });
+
+  // Right side: mini mockup of the button in ChatGPT
+  roundRect(ctx,980,140,340,280,20,'rgba(0,0,0,0.25)');
+  ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1;
+  roundRect(ctx,980,140,340,280,20); ctx.stroke();
+
+  ctx.fillStyle='rgba(255,255,255,0.12)';
+  roundRect(ctx,1002,168,296,110,14,'rgba(255,255,255,0.08)');
+  ctx.fillStyle='rgba(255,255,255,0.35)';
+  ctx.font='400 13px -apple-system,sans-serif';
+  ctx.fillText('Write a Python function to sort a list',1014,193);
+  ctx.fillStyle='rgba(255,255,255,0.55)';
+  ctx.font='400 11px -apple-system,sans-serif';
+  ctx.fillText('↳ "You are a Python expert. Write a well-structured…"',1014,218);
+
+  // Wand button mockup
+  roundRect(ctx,1240,265,48,34,17,'rgba(139,92,246,0.9)');
+  ctx.fillStyle='white'; ctx.font='16px sans-serif';
+  ctx.fillText('✦',1252,288);
+  ctx.fillStyle='rgba(255,255,255,0.5)';
+  ctx.font='10px -apple-system,sans-serif';
+  ctx.fillText('🎤',1290,288);
+
+  ctx.fillStyle='rgba(255,255,255,0.5)';
+  ctx.font='11px -apple-system,sans-serif';
+  ctx.fillText('Mode: Improve  ▾',1002,360);
+
+  ctx.fillStyle='rgba(255,255,255,0.7)';
+  ctx.font='400 11px -apple-system,sans-serif';
+  ctx.fillText('Improved in 0.4s  ↩ Undo',1002,390);
+
+  // "Powered by Groq" badge
+  ctx.fillStyle='rgba(255,255,255,0.3)';
+  ctx.font='500 13px -apple-system,sans-serif';
+  ctx.fillText('Powered by Groq  |  Free  |  No signup required',W/2-190,H-32);
+}
+
+// ── SCREENSHOT 1280×800 ────────────────────────────────────────────────────────
+function drawScreenshot(){
+  const c=document.getElementById('screenshot');
+  const ctx=c.getContext('2d');
+  const W=1280,H=800;
+
+  // Browser chrome BG
+  ctx.fillStyle='#1e1e1e'; ctx.fillRect(0,0,W,H);
+
+  // Browser chrome top bar
+  ctx.fillStyle='#2d2d2d'; ctx.fillRect(0,0,W,42);
+  ctx.fillStyle='#444'; roundRect(ctx,180,10,680,22,11,'#444');
+  ctx.fillStyle='rgba(255,255,255,0.5)';
+  ctx.font='11px sans-serif';
+  ctx.fillText('chatgpt.com',490,26);
+  // Traffic lights
+  ['#ff5f57','#febc2e','#28c840'].forEach((col,i)=>{
+    ctx.fillStyle=col;
+    ctx.beginPath(); ctx.arc(20+i*22,21,6,0,Math.PI*2); ctx.fill();
+  });
+
+  // ChatGPT page background
+  ctx.fillStyle='#212121'; ctx.fillRect(0,42,W,H-42);
+
+  // Sidebar
+  ctx.fillStyle='#171717'; ctx.fillRect(0,42,260,H-42);
+  ctx.fillStyle='rgba(255,255,255,0.1)';
+  ctx.font='600 14px sans-serif'; ctx.fillText('ChatGPT',20,80);
+  ['New chat','My project','Coding help','Explain concepts'].forEach((t,i)=>{
+    ctx.fillStyle='rgba(255,255,255,0.35)';
+    ctx.font='13px sans-serif'; ctx.fillText(t,20,140+i*36);
+  });
+
+  // Main content area
+  ctx.fillStyle='rgba(255,255,255,0.04)'; ctx.fillRect(260,42,W-260,H-42);
+
+  // ChatGPT heading
+  ctx.fillStyle='rgba(255,255,255,0.85)';
+  ctx.font='700 28px sans-serif';
+  const heading='Where should we begin?';
+  const hw=ctx.measureText(heading).width;
+  ctx.fillText(heading,(W+260)/2-hw/2,200);
+
+  // Composer box
+  roundRect(ctx,340,490,W-600,72,20,'#2f2f2f');
+
+  // Placeholder text
+  ctx.fillStyle='rgba(255,255,255,0.25)';
+  ctx.font='16px sans-serif';
+  ctx.fillText('Ask anything',370,532);
+
+  // Mic button mockup
+  ctx.fillStyle='rgba(255,255,255,0.18)';
+  ctx.beginPath(); ctx.arc(W-380,526,16,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.font='14px sans-serif';
+  ctx.fillText('🎤',W-389,531);
+
+  // === OUR EXTENSION BUTTON ===
+  roundRect(ctx,W-418,510,36,32,16,'#8b5cf6');
+  ctx.fillStyle='white'; ctx.font='700 15px sans-serif';
+  ctx.fillText('✦',W-410,531);
+
+  // Glowing ring around our button
+  ctx.strokeStyle='rgba(139,92,246,0.6)'; ctx.lineWidth=2.5;
+  roundRect(ctx,W-421,507,42,38,18); ctx.stroke();
+
+  // Callout arrow + label
+  ctx.strokeStyle='#a78bfa'; ctx.lineWidth=2; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(W-400,506); ctx.lineTo(W-400,460); ctx.stroke();
+  ctx.setLineDash([]);
+  roundRect(ctx,W-480,420,180,36,10,'rgba(139,92,246,0.85)');
+  ctx.fillStyle='white'; ctx.font='600 13px sans-serif';
+  ctx.fillText('Click ✦ to improve prompt',W-473,443);
+
+  // After-improvement mockup below
+  roundRect(ctx,340,580,W-600,100,16,'rgba(139,92,246,0.12)');
+  ctx.strokeStyle='rgba(139,92,246,0.3)'; ctx.lineWidth=1;
+  roundRect(ctx,340,580,W-600,100,16); ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.45)'; ctx.font='11px sans-serif';
+  ctx.fillText('IMPROVED  •  Improve mode  •  0.3s',360,600);
+  ctx.fillStyle='rgba(255,255,255,0.8)'; ctx.font='13px sans-serif';
+  ctx.fillText('You are a senior software engineer. Write a well-documented Python',360,622);
+  ctx.fillText('function that sorts a list using merge sort with O(n log n) complexity.',360,642);
+
+  // Undo pill
+  roundRect(ctx,362,658,72,22,11,'rgba(139,92,246,0.2)');
+  ctx.strokeStyle='rgba(139,92,246,0.4)'; ctx.lineWidth=1;
+  roundRect(ctx,362,658,72,22,11); ctx.stroke();
+  ctx.fillStyle='#a78bfa'; ctx.font='600 11px sans-serif';
+  ctx.fillText('↩ Undo',374,673);
+
+  // Score badges
+  const scores=[['Before','23/100','#dc2626'],['After','91/100','#16a34a']];
+  scores.forEach(([l,s2,col],i)=>{
+    const bx=W-380+i*110; const by=590;
+    roundRect(ctx,bx,by,96,60,10,'rgba(0,0,0,0.2)');
+    ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font='10px sans-serif'; ctx.fillText(l,bx+8,by+16);
+    ctx.fillStyle=col; ctx.font='700 20px sans-serif'; ctx.fillText(s2,bx+8,by+40);
+  });
+}
+
+// ── Download helper ────────────────────────────────────────────────────────────
+function dl(id, name){
+  const a=document.createElement('a');
+  a.href=document.getElementById(id).toDataURL('image/png');
+  a.download=name; a.click();
+}
+
+drawIcon();
+drawSmall();
+drawMarquee();
+drawScreenshot();
+</script>
+</body>
+</html>
