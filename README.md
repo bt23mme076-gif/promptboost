@@ -126,3 +126,28 @@ npm run format      # Prettier
 - API calls go directly from the extension to OpenAI/Anthropic/Google
 - Content Security Policy set in manifest
 - Input sanitized before sending to API
+
+## Privacy Policy
+
+**Last updated: June 2026**
+
+PromptBoost does not collect, store, or transmit any personal data to external servers.
+
+**Data collected and how it is used:**
+
+| Data | Where stored | Purpose |
+|------|-------------|---------|
+| Groq API key | Locally in `chrome.storage.local` (AES-GCM encrypted) | To make API calls on your behalf |
+| Selected improve mode | `localStorage` on the AI chat site | Remember your last-used mode |
+
+**What we do NOT collect:**
+- We do not collect your name, email, or any personally identifiable information
+- We do not log or store your prompts
+- We do not track your browsing history
+- We do not sell or share any data with third parties
+
+**Third-party services:**  
+When you click Improve, your prompt text is sent to the [Groq API](https://groq.com) using your own API key. Please review [Groq's privacy policy](https://groq.com/privacy-policy/) for how they handle data.
+
+**Contact:**  
+For questions, open an issue at https://github.com/bt23mme076-gif/promptboost/issues
