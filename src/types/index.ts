@@ -14,18 +14,16 @@ export const PLATFORM_LABELS: Record<Platform, string> = {
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
 export interface Settings {
-  groqKey: string;
-  model: string;
-  temperature: number;
+  licenseKey: string;      // empty = free tier
+  model: string;           // selected model id
   shortcutEnabled: boolean;
   showHistory: boolean;
   maxHistoryItems: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  groqKey: "",
+  licenseKey: "",
   model: "llama-3.3-70b-versatile",
-  temperature: 0.7,
   shortcutEnabled: true,
   showHistory: true,
   maxHistoryItems: 50,

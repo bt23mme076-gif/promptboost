@@ -1,9 +1,8 @@
 node_modules/
 dist/
+server/node_modules/
 .env
-.env.local
-*.crx
-*.pem
+server/.env
+*.env.local
 .DS_Store
 Thumbs.db
-*.log

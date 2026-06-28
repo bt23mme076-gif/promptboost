@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PromptBoost — Privacy Policy</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 16px; line-height: 1.7; color: #18181b;
+      background: #fff; max-width: 720px; margin: 0 auto; padding: 48px 24px 80px;
+    }
+    header { margin-bottom: 48px; }
+    .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .logo-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    .logo-name { font-size: 22px; font-weight: 700; color: #18181b; }
+    h1 { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+    .meta { color: #71717a; font-size: 14px; margin-bottom: 0; }
+    h2 { font-size: 18px; font-weight: 700; margin: 36px 0 10px; color: #18181b; }
+    p { color: #3f3f46; margin-bottom: 14px; }
+    ul { color: #3f3f46; padding-left: 20px; margin-bottom: 14px; }
+    li { margin-bottom: 6px; }
+    .highlight {
+      background: #f5f3ff; border-left: 3px solid #8b5cf6;
+      padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 20px 0;
+    }
+    .highlight p { margin: 0; color: #4c1d95; font-weight: 500; }
+    a { color: #7c3aed; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    footer { margin-top: 60px; padding-top: 24px; border-top: 1px solid #e4e4e7; color: #a1a1aa; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <div class="logo-icon">✨</div>
+      <span class="logo-name">PromptBoost</span>
+    </div>
+    <h1>Privacy Policy</h1>
+    <p class="meta">Last updated: June 2026</p>
+  </header>
+
+  <div class="highlight">
+    <p>PromptBoost does not collect, store, or share any personal data. Your prompts and API key never leave your device except to call the AI API you explicitly configured.</p>
+  </div>
+
+  <h2>1. What We Collect</h2>
+  <p>PromptBoost collects <strong>no personal information</strong>. The extension does not have analytics, telemetry, crash reporting, or any data collection mechanism built in.</p>
+
+  <h2>2. Data Stored Locally</h2>
+  <p>The following data is stored exclusively in your browser's local storage (<code>chrome.storage</code>) and never transmitted to any server operated by PromptBoost:</p>
+  <ul>
+    <li><strong>API key</strong> — encrypted with AES-256-GCM using a key derived from your browser's unique extension ID. Stored only on your device.</li>
+    <li><strong>Settings</strong> — your chosen AI model, temperature, and shortcut preferences.</li>
+    <li><strong>Prompt history</strong> — a local log of prompts you have improved, stored only on your device. You can clear or export this at any time from the extension settings.</li>
+  </ul>
+
+  <h2>3. Data Sent to Third-Party APIs</h2>
+  <p>When you click the improve button, PromptBoost sends the text you have typed to the AI API provider you configured (Groq by default). This request:</p>
+  <ul>
+    <li>Is made directly from your browser to <code>api.groq.com</code></li>
+    <li>Uses your own API key, which you obtained from your own Groq account</li>
+    <li>Is governed by <a href="https://groq.com/privacy-policy/" target="_blank" rel="noopener">Groq's Privacy Policy</a></li>
+    <li>Is never routed through any PromptBoost server — there is no PromptBoost backend</li>
+  </ul>
+  <p>PromptBoost does not see, log, or store any prompt content on any server.</p>
+
+  <h2>4. Permissions Explained</h2>
+  <ul>
+    <li><strong>storage</strong> — saves your encrypted API key, settings, and local prompt history on your device only.</li>
+    <li><strong>activeTab</strong> — reads the active browser tab to locate the AI chat input field so the improve button can be injected next to it.</li>
+    <li><strong>scripting</strong> — injects the improve button UI into AI chat pages you visit.</li>
+    <li><strong>contextMenus</strong> — adds a right-click "Improve with PromptBoost" option when you select text on any page.</li>
+    <li><strong>host_permissions (api.groq.com)</strong> — allows the extension to call the Groq API directly from your browser using your own API key.</li>
+  </ul>
+
+  <h2>5. No Tracking or Analytics</h2>
+  <p>PromptBoost contains no tracking pixels, no analytics SDK (no Google Analytics, Mixpanel, Amplitude, or similar), and no error reporting service. We have no visibility into how you use the extension.</p>
+
+  <h2>6. Children's Privacy</h2>
+  <p>PromptBoost is not directed at children under 13. We do not knowingly collect any information from children.</p>
+
+  <h2>7. Changes to This Policy</h2>
+  <p>If this policy changes materially, the "Last updated" date at the top of this page will be updated. Continued use of the extension after changes constitutes acceptance of the revised policy.</p>
+
+  <h2>8. Contact</h2>
+  <p>Questions about this privacy policy? Open an issue on the <a href="https://github.com/nitin-rai/promptboost" target="_blank" rel="noopener">GitHub repository</a> or email the developer directly.</p>
+
+  <footer>
+    &copy; 2026 PromptBoost. All rights reserved.
+  </footer>
+</body>
+</html>

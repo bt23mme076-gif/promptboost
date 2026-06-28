@@ -1,27 +1,12 @@
-import { Settings, DEFAULT_SETTINGS, PromptHistoryItem, VALID_GROQ_MODELS } from "@/types";
+import { Settings, DEFAULT_SETTINGS, PromptHistoryItem } from "@/types";
 import { STORAGE_KEYS } from "@/utils/constants";
-import { encryptApiKey, decryptApiKey } from "@/utils/encryption";
 
 export async function getSettings(): Promise<Settings> {
   return new Promise((resolve) => {
-    chrome.storage.sync.get(STORAGE_KEYS.SETTINGS, async (result) => {
+    chrome.storage.sync.get(STORAGE_KEYS.SETTINGS, (result) => {
       const raw = result[STORAGE_KEYS.SETTINGS] as Partial<Settings> | undefined;
       if (!raw) { resolve(DEFAULT_SETTINGS); return; }
-
-      // Migrate: decommissioned/preview models (mixtral, gemma2, OpenRouter slugs)
-      // are auto-reset to the default so the user never hits a dead-model error.
-      const model =
-        raw.model && VALID_GROQ_MODELS.includes(raw.model)
-          ? raw.model
-          : DEFAULT_SETTINGS.model;
-
-      const settings: Settings = {
-        ...DEFAULT_SETTINGS,
-        ...raw,
-        model,
-        groqKey: raw.groqKey ? await decryptApiKey(raw.groqKey) : "",
-      };
-      resolve(settings);
+      resolve({ ...DEFAULT_SETTINGS, ...raw });
     });
   });
 }
@@ -29,10 +14,7 @@ export async function getSettings(): Promise<Settings> {
 export async function saveSettings(updates: Partial<Settings>): Promise<void> {
   const current = await getSettings();
   const merged: Settings = { ...current, ...updates };
-  const toStore: Settings = {
-    ...merged,
-    groqKey: merged.groqKey ? await encryptApiKey(merged.groqKey) : "",
-  };
+  const toStore = merged;
   return new Promise((resolve, reject) => {
     chrome.storage.sync.set({ [STORAGE_KEYS.SETTINGS]: toStore }, () => {
       if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
