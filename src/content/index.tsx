@@ -226,7 +226,20 @@ function findHorizontalRow(anchor: HTMLElement): { container: HTMLElement; ref: 
 }
 
 function injectButton(inputEl: HTMLElement) {
-  if (document.getElementById(SHADOW_HOST_ID)) return;
+  const existing = document.getElementById(SHADOW_HOST_ID);
+  if (existing) {
+    // If the host is still connected AND its sibling is still the toolbar anchor → keep it
+    const anchor = findToolbarAnchor();
+    if (
+      existing.isConnected &&
+      existing.offsetParent !== null &&
+      anchor &&
+      existing.parentElement === anchor.parentElement
+    ) return;
+    // Otherwise the toolbar was rebuilt — remove and re-inject
+    existing.remove();
+    shadowRef = null;
+  }
 
   const anchor = findToolbarAnchor();
 

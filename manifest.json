@@ -57,7 +57,8 @@
     "contextMenus"
   ],
   "host_permissions": [
-    "https://api.promptboost.in/*"
+    "https://apipromptboost.atyant.in/*",
+    "http://localhost:3001/*"
   ],
   "commands": {
     "improve-prompt": {

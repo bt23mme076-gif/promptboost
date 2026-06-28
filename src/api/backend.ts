@@ -1,6 +1,6 @@
 import { ModeConfig } from "@/utils/promptModes";
 
-export const BACKEND_URL = "https://api.promptboost.in";
+export const BACKEND_URL = "https://apipromptboost.atyant.in";
 
 export interface ModelOption {
   id: string;
