@@ -1,14 +1,18 @@
 import { Router } from "express";
 import Razorpay from "razorpay";
 import crypto from "crypto";
+import jwt from "jsonwebtoken";
 import { generateLicense } from "../middleware/auth.js";
 
 const router = Router();
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+function getRazorpay() {
+  if (!process.env.RAZORPAY_KEY_ID) throw new Error("Razorpay not configured");
+  return new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  });
+}
 
 // POST /payment/order — create a Razorpay order
 router.post("/order", async (req, res) => {
@@ -23,6 +27,7 @@ router.post("/order", async (req, res) => {
   if (!selected) return res.status(400).json({ error: "Invalid plan" });
 
   try {
+    const razorpay = getRazorpay();
     const order = await razorpay.orders.create({
       amount: selected.amount,
       currency: selected.currency,
@@ -53,13 +58,12 @@ router.post("/verify", async (req, res) => {
 });
 
 // POST /payment/verify-license — extension calls this to check if key is valid
-router.post("/verify-license", (req, res) => {
+router.post("/verify-license", async (req, res) => {
   const { licenseKey } = req.body;
   if (!licenseKey) return res.status(400).json({ valid: false });
 
   try {
-    const jwt = await import("jsonwebtoken");
-    const payload = jwt.default.verify(licenseKey, process.env.LICENSE_SECRET);
+    const payload = jwt.verify(licenseKey, process.env.LICENSE_SECRET);
     res.json({ valid: true, plan: payload.plan, email: payload.email });
   } catch {
     res.json({ valid: false });
