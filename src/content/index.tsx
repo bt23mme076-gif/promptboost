@@ -148,79 +148,42 @@ const SHADOW_HOST_ID = "promptboost-root";
 let shadowRef: ShadowRoot | null = null;
 
 /**
- * Find an anchor button that lives in ChatGPT's BOTTOM TOOLBAR ROW
- * (not the absolute overlay inside the textarea).
- *
- * Strategy: prefer the send/submit button — it's always bottom-right and
- * never floats inside the textarea. Fall back to mic/voice selectors.
+ * Trailing action buttons that live in the composer's bottom-right button
+ * group (send / voice / dictate / mic). On ChatGPT the send button only
+ * exists once you've typed — when the composer is empty it shows a voice
+ * button instead — so we accept any of them.
  */
-function findToolbarAnchor(): HTMLElement | null {
-  // Send button is the most reliable: it's always in the bottom toolbar row.
-  const sendSelectors = [
-    'button[data-testid="send-button"]',
-    'button[aria-label="Send prompt"]',
-    'button[aria-label*="send" i]',
-    'button[aria-label*="submit" i]',
-  ];
-  for (const sel of sendSelectors) {
-    try {
-      const btn = document.querySelector<HTMLElement>(sel);
-      if (btn && btn.offsetParent !== null) return btn;
-    } catch { /* skip */ }
-  }
-
-  // Voice-mode button (circular waveform icon) — lives in bottom toolbar.
-  // Different from the overlay mic icon which is *inside* the textarea box.
-  const voiceSelectors = [
-    'button[aria-label="Start voice mode"]',
-    'button[data-testid="composer-speech-button"]',
-    'button[data-testid*="voice"]',
-    'button[aria-label*="voice" i]',
-    'button[aria-label*="micro" i]',
-    'button[aria-label*="audio" i]',
-  ];
-  for (const sel of voiceSelectors) {
-    try {
-      const btn = document.querySelector<HTMLElement>(sel);
-      if (btn && btn.offsetParent !== null) return btn;
-    } catch { /* skip */ }
-  }
-  return null;
-}
+const ACTION_BUTTON_SELECTORS = [
+  'button[data-testid="send-button"]',
+  'button[id="composer-submit-button"]',
+  'button[aria-label="Send prompt"]',
+  'button[aria-label*="send" i]',
+  'button[aria-label*="submit" i]',
+  'button[data-testid="composer-speech-button"]',
+  'button[aria-label="Start voice mode"]',
+  'button[aria-label*="voice" i]',
+  'button[aria-label*="dictate" i]',
+  'button[aria-label*="micro" i]',
+];
 
 /**
- * Walk UP from `anchor` until we find the first ancestor that is a
- * HORIZONTAL flex row (siblings share the same Y coordinate).
- * Returns the container and the direct child of that container that
- * contains `anchor` (so we can insertBefore it).
+ * Find the composer's trailing button group by walking UP from the input
+ * element (so the search is SCOPED to this composer, not the whole page).
+ * Returns the container that holds the action buttons and the specific
+ * button to insert before, so PromptBoost sits inline with send/voice.
  */
-function findHorizontalRow(anchor: HTMLElement): { container: HTMLElement; ref: HTMLElement } | null {
-  let ref: HTMLElement = anchor;
-  let parent: HTMLElement | null = anchor.parentElement;
-
-  while (parent && parent !== document.body) {
-    const children = Array.from(parent.children) as HTMLElement[];
-
-    if (children.length >= 2) {
-      // Collect Y-midpoints of visible children
-      const midpoints = children
-        .map((c) => {
-          const r = c.getBoundingClientRect();
-          return r.height > 0 ? r.top + r.height / 2 : null;
-        })
-        .filter((y): y is number => y !== null);
-
-      if (midpoints.length >= 2) {
-        const spread = Math.max(...midpoints) - Math.min(...midpoints);
-        if (spread < 12) {
-          // All children at the same Y → this is a horizontal row.
-          return { container: parent, ref };
+function findComposerAnchor(inputEl: HTMLElement): { container: HTMLElement; ref: HTMLElement } | null {
+  let scope: HTMLElement | null = inputEl;
+  for (let depth = 0; depth < 8 && scope && scope !== document.body; depth++) {
+    for (const sel of ACTION_BUTTON_SELECTORS) {
+      try {
+        const btn = scope.querySelector<HTMLElement>(sel);
+        if (btn && btn.offsetParent !== null && btn.parentElement) {
+          return { container: btn.parentElement, ref: btn };
         }
-      }
+      } catch { /* invalid selector — skip */ }
     }
-
-    ref = parent;
-    parent = parent.parentElement;
+    scope = scope.parentElement;
   }
   return null;
 }
@@ -228,34 +191,22 @@ function findHorizontalRow(anchor: HTMLElement): { container: HTMLElement; ref: 
 function injectButton(inputEl: HTMLElement) {
   const existing = document.getElementById(SHADOW_HOST_ID);
   if (existing) {
-    // If the host is still connected AND its sibling is still the toolbar anchor → keep it
-    const anchor = findToolbarAnchor();
-    if (
-      existing.isConnected &&
-      existing.offsetParent !== null &&
-      anchor &&
-      existing.parentElement === anchor.parentElement
-    ) return;
-    // Otherwise the toolbar was rebuilt — remove and re-inject
+    // Keep it as long as it's still attached and visible. Only re-inject when
+    // the host has been detached (e.g. ChatGPT rebuilt the composer after a
+    // message) — re-injecting puts it back in the same spot in the action row.
+    if (existing.isConnected && existing.offsetParent !== null) return;
     existing.remove();
     shadowRef = null;
   }
 
-  const anchor = findToolbarAnchor();
+  const anchor = findComposerAnchor(inputEl);
 
   let insertContainer: HTMLElement | null = null;
   let insertRef: HTMLElement | null = null;
 
   if (anchor) {
-    const row = findHorizontalRow(anchor);
-    if (row) {
-      insertContainer = row.container;
-      insertRef = row.ref; // insert BEFORE the anchor's group
-    } else {
-      // anchor.parentElement is already the row
-      insertContainer = anchor.parentElement;
-      insertRef = anchor;
-    }
+    insertContainer = anchor.container;
+    insertRef = anchor.ref; // insert BEFORE the send/voice button
   }
 
   // Ultimate fallback: append to the input element's parent
@@ -322,9 +273,9 @@ function startObserver() {
   let debounce: ReturnType<typeof setTimeout> | null = null;
   const observer = new MutationObserver(() => {
     if (debounce) clearTimeout(debounce);
-    debounce = setTimeout(() => {
-      if (!document.getElementById(SHADOW_HOST_ID)) tryInject();
-    }, 250);
+    // tryInject is a cheap no-op when the button is already attached + visible,
+    // so we can safely run it on every settle to recover from composer rebuilds.
+    debounce = setTimeout(tryInject, 150);
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
