@@ -47,41 +47,40 @@
   </header>
 
   <div class="highlight">
-    <p>PromptBoost does not collect, store, or share any personal data. Your prompts and API key never leave your device except to call the AI API you explicitly configured.</p>
+    <p>To improve a prompt, PromptBoost sends the text you choose to improve to its own server, which forwards it to an AI provider and streams back the result. We run no analytics, set no tracking cookies, and do not store your prompts in any database.</p>
   </div>
 
   <h2>1. What We Collect</h2>
-  <p>PromptBoost collects <strong>no personal information</strong>. The extension does not have analytics, telemetry, crash reporting, or any data collection mechanism built in.</p>
+  <p>PromptBoost has <strong>no accounts, no analytics, no telemetry, and no crash reporting</strong>. We do not build user profiles or sell data to anyone. The only data we process is the prompt text you explicitly choose to improve, and we process it transiently to generate the improved version (see Section 3).</p>
 
   <h2>2. Data Stored Locally</h2>
-  <p>The following data is stored exclusively in your browser's local storage (<code>chrome.storage</code>) and never transmitted to any server operated by PromptBoost:</p>
+  <p>The following is stored only in your browser (<code>chrome.storage</code>) and is never uploaded to us:</p>
   <ul>
-    <li><strong>API key</strong> — encrypted with AES-256-GCM using a key derived from your browser's unique extension ID. Stored only on your device.</li>
-    <li><strong>Settings</strong> — your chosen AI model, temperature, and shortcut preferences.</li>
-    <li><strong>Prompt history</strong> — a local log of prompts you have improved, stored only on your device. You can clear or export this at any time from the extension settings.</li>
+    <li><strong>Settings</strong> — your chosen AI model and shortcut preferences.</li>
+    <li><strong>Prompt history</strong> — a local log of prompts you have improved, kept only on your device. You can clear or export it any time from the extension settings.</li>
+    <li><strong>Pro licence key (optional)</strong> — if you purchase Pro, your licence key is stored locally and sent with requests only to verify your plan. Free users have no key.</li>
   </ul>
+  <p>PromptBoost does not require or collect any third-party API key. The free tier works out of the box.</p>
 
-  <h2>3. Data Sent to Third-Party APIs</h2>
-  <p>When you click the improve button, PromptBoost sends the text you have typed to the AI API provider you configured (Groq by default). This request:</p>
+  <h2>3. Data Sent to Our Server</h2>
+  <p>When you click the improve button (or use the right-click / keyboard shortcut), PromptBoost sends the following to our server at <code>apipromptboost.atyant.in</code> over an encrypted HTTPS connection:</p>
   <ul>
-    <li>Is made directly from your browser to <code>api.groq.com</code></li>
-    <li>Uses your own API key, which you obtained from your own Groq account</li>
-    <li>Is governed by <a href="https://groq.com/privacy-policy/" target="_blank" rel="noopener">Groq's Privacy Policy</a></li>
-    <li>Is never routed through any PromptBoost server — there is no PromptBoost backend</li>
+    <li>The prompt text you are improving</li>
+    <li>The name of the AI site you are on (e.g. "claude") and a short snippet of the visible conversation, used only to give the rewrite better context</li>
+    <li>Your Pro licence key, if you have one, to authorise premium models</li>
   </ul>
-  <p>PromptBoost does not see, log, or store any prompt content on any server.</p>
+  <p>Our server forwards this to an AI provider to generate the improvement: <a href="https://groq.com/privacy-policy/" target="_blank" rel="noopener">Groq</a> for the free tier, and <a href="https://openai.com/policies/privacy-policy/" target="_blank" rel="noopener">OpenAI</a> or <a href="https://www.anthropic.com/legal/privacy" target="_blank" rel="noopener">Anthropic</a> for Pro models. The result is streamed straight back to your browser. <strong>Your prompt content is processed in memory and is not written to any PromptBoost database or log.</strong> The AI providers process the request under their own privacy policies.</p>
 
   <h2>4. Permissions Explained</h2>
   <ul>
-    <li><strong>storage</strong> — saves your encrypted API key, settings, and local prompt history on your device only.</li>
-    <li><strong>activeTab</strong> — reads the active browser tab to locate the AI chat input field so the improve button can be injected next to it.</li>
-    <li><strong>scripting</strong> — injects the improve button UI into AI chat pages you visit.</li>
-    <li><strong>contextMenus</strong> — adds a right-click "Improve with PromptBoost" option when you select text on any page.</li>
-    <li><strong>host_permissions (api.groq.com)</strong> — allows the extension to call the Groq API directly from your browser using your own API key.</li>
+    <li><strong>storage</strong> — saves your settings, local prompt history, and optional Pro licence key on your device only.</li>
+    <li><strong>activeTab</strong> — reads the URL of your current tab (only when you open the extension) to show which AI site you are on.</li>
+    <li><strong>contextMenus</strong> — adds a right-click "Improve with PromptBoost" option when you select text.</li>
+    <li><strong>host access (apipromptboost.atyant.in)</strong> — lets the extension send prompts to our server to generate improvements.</li>
   </ul>
 
   <h2>5. No Tracking or Analytics</h2>
-  <p>PromptBoost contains no tracking pixels, no analytics SDK (no Google Analytics, Mixpanel, Amplitude, or similar), and no error reporting service. We have no visibility into how you use the extension.</p>
+  <p>PromptBoost contains no tracking pixels, no analytics SDK (no Google Analytics, Mixpanel, Amplitude, or similar), and no error reporting service. We have no visibility into how you use the extension beyond serving the improvement requests you make.</p>
 
   <h2>6. Children's Privacy</h2>
   <p>PromptBoost is not directed at children under 13. We do not knowingly collect any information from children.</p>
@@ -90,7 +89,7 @@
   <p>If this policy changes materially, the "Last updated" date at the top of this page will be updated. Continued use of the extension after changes constitutes acceptance of the revised policy.</p>
 
   <h2>8. Contact</h2>
-  <p>Questions about this privacy policy? Open an issue on the <a href="https://github.com/nitin-rai/promptboost" target="_blank" rel="noopener">GitHub repository</a> or email the developer directly.</p>
+  <p>Questions about this privacy policy? Open an issue on the <a href="https://github.com/bt23mme076-gif/promptboost" target="_blank" rel="noopener">GitHub repository</a> or email the developer directly.</p>
 
   <footer>
     &copy; 2026 PromptBoost. All rights reserved.

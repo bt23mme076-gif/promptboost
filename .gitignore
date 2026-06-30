@@ -6,3 +6,4 @@ server/.env
 *.env.local
 .DS_Store
 Thumbs.db
+dist.zip

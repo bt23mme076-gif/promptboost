@@ -3,7 +3,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { useHistory } from "@/hooks/useHistory";
 import { Settings } from "@/types";
 import { exportHistory, importHistory, resetSettings } from "@/storage";
-import { FREE_MODELS, PRO_MODELS, ModelOption } from "@/api/backend";
+import { FREE_MODELS, PRO_MODELS, ModelOption, BACKEND_URL } from "@/api/backend";
 
 type Section = "plan" | "model" | "history" | "about";
 
@@ -42,7 +42,7 @@ export function Options() {
     if (!licenseLocal.trim()) return;
     setVerifying(true);
     try {
-      const res = await fetch("https://api.promptboost.in/api/payment/verify-license", {
+      const res = await fetch(`${BACKEND_URL}/api/payment/verify-license`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ licenseKey: licenseLocal.trim() }),
@@ -85,7 +85,6 @@ export function Options() {
   };
 
   const isPro = licenseStatus === "valid";
-  const availableModels: ModelOption[] = isPro ? [...FREE_MODELS, ...PRO_MODELS] : FREE_MODELS;
 
   const nav: { id: Section; label: string; icon: string }[] = [
     { id: "plan",    label: "Plan",    icon: "⚡" },

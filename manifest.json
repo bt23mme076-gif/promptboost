@@ -53,12 +53,10 @@
   "permissions": [
     "storage",
     "activeTab",
-    "scripting",
     "contextMenus"
   ],
   "host_permissions": [
-    "https://apipromptboost.atyant.in/*",
-    "http://localhost:3001/*"
+    "https://apipromptboost.atyant.in/*"
   ],
   "commands": {
     "improve-prompt": {

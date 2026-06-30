@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useSettings } from "@/hooks/useSettings";
 import { useHistory } from "@/hooks/useHistory";
-import { Platform, PLATFORM_LABELS, PromptHistoryItem, GROQ_MODELS } from "@/types";
+import { Platform, PLATFORM_LABELS, PromptHistoryItem } from "@/types";
+import { FREE_MODELS, PRO_MODELS } from "@/api/backend";
 
 type Tab = "home" | "history";
 
@@ -32,8 +33,9 @@ export function Popup() {
 
   const openOptions = () => chrome.runtime.openOptionsPage();
 
-  const isConfigured = !!settings.groqKey;
-  const modelLabel = GROQ_MODELS.find((m) => m.value === settings.model)?.label ?? settings.model;
+  const isPro = !!settings.licenseKey;
+  const allModels = [...FREE_MODELS, ...PRO_MODELS];
+  const modelLabel = allModels.find((m) => m.id === settings.model)?.label ?? settings.model;
 
   const copyToClipboard = async (text: string, id: string) => {
     await navigator.clipboard.writeText(text);
@@ -96,23 +98,15 @@ export function Popup() {
         {/* Content */}
         {activeTab === "home" ? (
           <div className="flex-1 p-4 flex flex-col gap-3">
-            {/* Status card */}
-            <div className={`rounded-xl p-3 flex items-center gap-3 ${
-              isConfigured
-                ? "bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900"
-                : "bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900"
-            }`}>
-              <div className={`w-2 h-2 rounded-full ${isConfigured ? "bg-emerald-500" : "bg-amber-500"}`} />
+            {/* Status card — always ready, no setup needed */}
+            <div className="rounded-xl p-3 flex items-center gap-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900">
+              <div className="w-2 h-2 rounded-full bg-emerald-500" />
               <div className="flex-1 min-w-0">
-                <div className={`text-xs font-semibold ${
-                  isConfigured ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"
-                }`}>
-                  {isConfigured ? "Connected" : "Setup required"}
+                <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                  {isPro ? "Pro ⚡" : "Ready"}
                 </div>
                 <div className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate mt-0.5">
-                  {isConfigured
-                    ? `Groq · ${modelLabel}`
-                    : "Add Groq API key to get started"}
+                  {isPro ? modelLabel : `Free tier · ${modelLabel}`}
                 </div>
               </div>
             </div>
@@ -127,13 +121,13 @@ export function Popup() {
               </div>
             )}
 
-            {/* Not configured CTA */}
-            {!isConfigured && (
+            {/* Upgrade CTA — only for free users */}
+            {!isPro && (
               <button
                 onClick={openOptions}
                 className="w-full py-2.5 px-4 bg-gradient-to-r from-violet-600 to-purple-700 text-white text-sm font-semibold rounded-xl hover:from-violet-700 hover:to-purple-800 transition-all shadow-sm hover:shadow-md"
               >
-                Add API Key →
+                Upgrade to Pro ⚡
               </button>
             )}
 
