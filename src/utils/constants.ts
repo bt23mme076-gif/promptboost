@@ -3,6 +3,7 @@ export const STORAGE_KEYS = {
   HISTORY: "promptboost_history",
   ENCRYPTED_KEYS: "promptboost_encrypted_keys",
   ENCRYPTION_SALT: "promptboost_salt",
+  ONBOARDED: "promptboost_onboarded_v1",
 } as const;
 
 export const IMPROVE_SYSTEM_PROMPT = `You are a world-class prompt engineer with deep expertise across AI systems.
