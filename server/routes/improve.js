@@ -10,15 +10,25 @@ const router = Router();
 // ─── Model catalogue ──────────────────────────────────────────────────────────
 
 export const FREE_MODELS = [
-  { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B", provider: "groq", tier: "free" },
-  { id: "llama-3.1-8b-instant",    label: "Llama 3.1 8B (Fast)", provider: "groq", tier: "free" },
+  { id: "openai/gpt-oss-120b", label: "GPT-OSS 120B",      provider: "groq", tier: "free" },
+  { id: "openai/gpt-oss-20b",  label: "GPT-OSS 20B (Fast)", provider: "groq", tier: "free" },
+  { id: "qwen/qwen3.8-27b",    label: "Qwen3 27B",         provider: "groq", tier: "free" },
 ];
 
 export const PRO_MODELS = [
-  { id: "gpt-4o",                  label: "GPT-4o",            provider: "openai",     tier: "pro" },
-  { id: "gpt-4o-mini",             label: "GPT-4o Mini",       provider: "openai",     tier: "pro" },
-  { id: "claude-sonnet-4-6",       label: "Claude Sonnet 4.6", provider: "anthropic",  tier: "pro" },
-  { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5", provider: "anthropic", tier: "pro" },
+  { id: "gpt-5",                      label: "GPT-5",                 provider: "openai",    tier: "pro" },
+  { id: "claude-opus-4-1",           label: "Claude Opus 4.1",       provider: "anthropic", tier: "pro" },
+  { id: "claude-sonnet-4",           label: "Claude Sonnet 4",       provider: "anthropic", tier: "pro" },
+  { id: "gemini-2.5-pro",            label: "Gemini 2.5 Pro",        provider: "google",    tier: "pro" },
+  { id: "grok-4",                    label: "Grok 4",                provider: "xai",       tier: "pro" },
+  { id: "deepseek-r1",               label: "DeepSeek R1",           provider: "deepseek",  tier: "pro" },
+  { id: "kimi-k2",                   label: "Kimi K2",               provider: "moonshot",  tier: "pro" },
+  { id: "qwen3-235b-a22b",           label: "Qwen3 235B",            provider: "alibaba",   tier: "pro" },
+  { id: "gpt-4o",                     label: "GPT-4o",                provider: "openai",    tier: "pro" },
+  { id: "o3-mini",                    label: "OpenAI o3-mini",        provider: "openai",    tier: "pro" },
+  { id: "gpt-4o-mini",                label: "GPT-4o Mini",           provider: "openai",    tier: "pro" },
+  { id: "claude-3-7-sonnet-20250219",  label: "Claude 3.7 Sonnet",     provider: "anthropic", tier: "pro" },
+  { id: "claude-3-5-haiku-20241022",   label: "Claude 3.5 Haiku",      provider: "anthropic", tier: "pro" },
 ];
 
 export const ALL_MODELS = [...FREE_MODELS, ...PRO_MODELS];
@@ -32,7 +42,7 @@ router.get("/models", (req, res) => {
 // ─── POST /improve (free) ─────────────────────────────────────────────────────
 
 router.post("/improve", freeLimiter, async (req, res) => {
-  const { prompt, platform, mode, context, model = "llama-3.3-70b-versatile" } = req.body;
+  const { prompt, platform, mode, context, model = "openai/gpt-oss-120b" } = req.body;
 
   const modelMeta = FREE_MODELS.find((m) => m.id === model);
   if (!modelMeta) {
@@ -120,6 +130,38 @@ router.post("/improve/pro", requireLicense, async (req, res) => {
         if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
           res.write(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`);
         }
+      }
+    } else {
+      const openrouterApiKey = process.env.OPENROUTER_API_KEY;
+      if (!openrouterApiKey) {
+        throw new Error("OPENROUTER_API_KEY is not configured");
+      }
+
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${openrouterApiKey}`,
+          "HTTP-Referer": "https://github.com/promptboost",
+          "X-Title": "PromptBoost",
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0.7,
+          max_tokens: 2000,
+          messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userMessage }],
+        }),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody.error?.message || `OpenRouter error ${response.status}`);
+      }
+
+      const data = await response.json();
+      const text = data?.choices?.[0]?.message?.content?.trim();
+      if (text) {
+        res.write(`data: ${JSON.stringify({ text })}\n\n`);
       }
     }
 

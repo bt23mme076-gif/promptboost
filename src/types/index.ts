@@ -23,7 +23,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   licenseKey: "",
-  model: "llama-3.3-70b-versatile",
+  model: "openai/gpt-oss-120b",
   shortcutEnabled: true,
   showHistory: true,
   maxHistoryItems: 50,
@@ -36,16 +36,10 @@ export const DEFAULT_SETTINGS: Settings = {
 
 export const GROQ_MODELS = [
   {
-    value: "llama-3.3-70b-versatile",
-    label: "Llama 3.3 70B — Best quality",
-    note: "Sharpest rewrites · 280 tok/s",
-    recommended: true,
-  },
-  {
     value: "openai/gpt-oss-120b",
     label: "GPT-OSS 120B — Best reasoning",
     note: "Strong structure · 500 tok/s",
-    recommended: false,
+    recommended: true,
   },
   {
     value: "openai/gpt-oss-20b",
@@ -54,9 +48,9 @@ export const GROQ_MODELS = [
     recommended: false,
   },
   {
-    value: "llama-3.1-8b-instant",
-    label: "Llama 3.1 8B — Fastest",
-    note: "Instant · 560 tok/s",
+    value: "qwen/qwen3.8-27b",
+    label: "Qwen3 27B — Balanced open",
+    note: "General-purpose rewrites",
     recommended: false,
   },
 ] as const;
