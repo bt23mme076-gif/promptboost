@@ -101,6 +101,9 @@ export function cleanPromptOutput(text: string): string {
   // Drop a leading meta line like: Here is the improved prompt:
   out = out.replace(/^(here(?:'s| is)[^\n:]*:|improved prompt:|rewritten prompt:)\s*/i, "").trim();
 
+  // Drop a bare label line such as "**Prompt:**" / "Improved Prompt:" before the body.
+  out = out.replace(/^(?:\*\*|__)?\s*(?:improved |rewritten |new )?prompt\s*:?\s*(?:\*\*|__)?\s*:?\s*\n+/i, "").trim();
+
   // Strip matching wrapping quotes around the whole output.
   if ((out.startsWith('"') && out.endsWith('"')) || (out.startsWith("'") && out.endsWith("'"))) {
     out = out.slice(1, -1).trim();

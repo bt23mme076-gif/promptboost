@@ -52,19 +52,30 @@ function setValueNative(el: HTMLTextAreaElement | HTMLInputElement, value: strin
 function setContentEditable(el: HTMLElement, text: string): void {
   el.focus();
 
-  // Select all existing content
+  // Select all existing content so the insert below replaces it
   const selection = window.getSelection();
   const range = document.createRange();
   range.selectNodeContents(el);
   selection?.removeAllRanges();
   selection?.addRange(range);
 
-  // Use execCommand for broad compatibility with ProseMirror / Quill
-  // Falls back to direct innerHTML manipulation
-  const inserted = document.execCommand("insertText", false, text);
-  if (!inserted) {
-    el.innerHTML = text.replace(/\n/g, "<br>");
-    el.dispatchEvent(new InputEvent("input", { bubbles: true, data: text }));
+  // 1. A synthetic paste is the most reliable way to insert MULTI-LINE text
+  //    into ProseMirror / Quill / Lexical editors — they own paste handling and
+  //    turn newlines into paragraphs. A bare insertText with "\n" gets
+  //    truncated to the first line on some of them (e.g. Claude).
+  // 2. Otherwise insert line by line with explicit paragraph breaks.
+  // 3. Last resort: write the DOM directly.
+  if (!pasteText(el, text)) {
+    const lines = text.split("\n");
+    let ok = true;
+    lines.forEach((line, i) => {
+      if (i > 0) ok = document.execCommand("insertParagraph") && ok;
+      if (line) ok = document.execCommand("insertText", false, line) && ok;
+    });
+    if (!ok || !el.innerText.trim()) {
+      el.innerHTML = text.split("\n").map((l) => `<p>${escapeHtml(l) || "<br>"}</p>`).join("");
+      el.dispatchEvent(new InputEvent("input", { bubbles: true, data: text }));
+    }
   }
 
   // Move cursor to end
@@ -73,6 +84,22 @@ function setContentEditable(el: HTMLElement, text: string): void {
   endRange.collapse(false);
   selection?.removeAllRanges();
   selection?.addRange(endRange);
+}
+
+function pasteText(el: HTMLElement, text: string): boolean {
+  try {
+    const data = new DataTransfer();
+    data.setData("text/plain", text);
+    const ev = new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true });
+    el.dispatchEvent(ev);
+    return ev.defaultPrevented;
+  } catch {
+    return false;
+  }
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 // ─── Undo Support ─────────────────────────────────────────────────────────────

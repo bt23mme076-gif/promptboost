@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef, useEffect, CSSProperties } from "react";
-import { createPortal } from "react-dom";
 import { PromptMode, MODES } from "@/utils/promptModes";
 import { BoostOptions, Tone, Length, VariationResult, DEFAULT_TONE, DEFAULT_LENGTH } from "@/utils/boostOptions";
 import { BoostPanel } from "./BoostPanel";
+import { ShadowPortal } from "./ShadowPortal";
 import { STORAGE_KEYS } from "@/utils/constants";
 
 type ButtonState = "idle" | "loading" | "success" | "error";
@@ -264,7 +264,8 @@ export function ImproveButton({
       )}
 
       {/* First-use callout — shown once, until the user clicks the wand or caret */}
-      {showOnboarding && !menuOpen && createPortal(
+      {showOnboarding && !menuOpen && (
+        <ShadowPortal>
         <div
           role="status"
           style={{
@@ -291,12 +292,13 @@ export function ImproveButton({
           >
             Got it
           </button>
-        </div>,
-        document.body
+        </div>
+        </ShadowPortal>
       )}
 
       {/* Boost panel — portalled to escape the composer's overflow:hidden */}
-      {menuOpen && createPortal(
+      {menuOpen && (
+        <ShadowPortal>
         <div
           ref={menuRef}
           role="menu"
@@ -305,7 +307,7 @@ export function ImproveButton({
             position: "fixed", bottom: menuPos.bottom, left: menuPos.left,
             zIndex: 2147483647, background: "#1e1e1e", border: "1px solid #3a3a3a",
             borderRadius: "14px", boxShadow: "0 10px 40px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)",
-            overflow: "hidden",
+            maxHeight: `calc(100vh - ${menuPos.bottom}px - 12px)`, overflowY: "auto", overflowX: "hidden",
             fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
             animation: "pb-slide-up 0.14s ease-out both",
           }}
@@ -325,8 +327,8 @@ export function ImproveButton({
             onCloseResults={closeMenu}
             onPickTemplate={handlePickTemplate}
           />
-        </div>,
-        document.body
+        </div>
+        </ShadowPortal>
       )}
     </div>
   );

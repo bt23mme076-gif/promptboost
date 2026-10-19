@@ -5,7 +5,7 @@ import { detectPlatform, findVisibleInputElement } from "./utils/platformDetecto
 import { getTextFromElement, setTextToElement, captureSnapshot, restoreSnapshot } from "./utils/textareaUtils";
 import { readConversationContext } from "./utils/contextReader";
 import { ImproveButton } from "./components/ImproveButton";
-import { PromptMode } from "@/utils/promptModes";
+import { PromptMode, cleanPromptOutput } from "@/utils/promptModes";
 import { BoostOptions, VariationResult, buildStyleContext } from "@/utils/boostOptions";
 
 import styles from "./content.css?inline";
@@ -102,7 +102,7 @@ function App({ getInputEl, getShadow }: AppProps) {
 
         // Prefer the server-cleaned final text (fences/preamble stripped);
         // fall back to the locally accumulated stream.
-        const finalText = msg.data ?? accumulated;
+        const finalText = cleanPromptOutput(msg.data ?? accumulated);
         if (finalText) {
           setTextToElement(el, finalText);
           setBtnState("success");
@@ -204,7 +204,7 @@ function App({ getInputEl, getShadow }: AppProps) {
           setVariationResults((prev) => prev?.map((r, i2) => (i2 === idx ? { ...r, text: r.text + msg.data } : r)) ?? prev);
         } else if (msg.type === "done") {
           try { port.disconnect(); } catch { /* ok */ }
-          setVariationResults((prev) => prev?.map((r, i2) => (i2 === idx ? { ...r, text: msg.data ?? r.text, done: true } : r)) ?? prev);
+          setVariationResults((prev) => prev?.map((r, i2) => (i2 === idx ? { ...r, text: cleanPromptOutput(msg.data ?? r.text), done: true } : r)) ?? prev);
         } else if (msg.type === "error") {
           try { port.disconnect(); } catch { /* ok */ }
           const errMsg = msg.error ?? "Something went wrong";
@@ -284,10 +284,24 @@ function App({ getInputEl, getShadow }: AppProps) {
 }
 
 // ─── Injection ────────────────────────────────────────────────────────────────
+//
+// PromptBoost floats over the page (position: fixed) and tracks the composer's
+// action buttons from the outside, instead of splicing itself into each site's
+// DOM. Every site lays out its composer differently (flex rows, vertical
+// stacks, grids), and frameworks rebuild those subtrees at will — so inserting
+// into them breaks placement on some sites and gets wiped on others. A fixed
+// overlay positioned from measured rects behaves the same everywhere.
 
 const SHADOW_HOST_ID = "promptboost-root";
+const BTN_HEIGHT = 32;
+/** Gap between our button and the composer's action cluster. */
+const CLUSTER_GAP = 6;
+/** Action buttons closer than this to the cluster are treated as part of it. */
+const CLUSTER_JOIN_DISTANCE = 64;
 
 let shadowRef: ShadowRoot | null = null;
+let placerEl: HTMLElement | null = null;
+let hostEl: HTMLElement | null = null;
 
 /**
  * Trailing action buttons that live in the composer's bottom-right button
@@ -308,7 +322,8 @@ const ACTION_BUTTON_SELECTORS = [
   // Gemini — uses data-tooltip / mattooltip / aria-label variants
   'button[data-tooltip*="Send" i]',
   'button[mattooltip*="Send" i]',
-  'button[aria-label*="Send" i]',
+  "button.send-button",
+  'button[aria-label*="Stop" i]',
   // Perplexity — search/ask submit button
   'button[aria-label*="search" i]',
   'button[aria-label*="ask" i]',
@@ -323,189 +338,148 @@ const ACTION_BUTTON_SELECTORS = [
   'button[type="submit"]',
 ];
 
-// Gemini-specific: find the send OR stop OR mic button by direct selector and anchor
-// immediately before it. Gemini rebuilds its toolbar between conversations and
-// the stop/send buttons can be at different DOM depths.
-const GEMINI_PRIMARY_SELECTORS = [
-  'button[aria-label*="Send" i]',
-  'button[mattooltip*="Send" i]',
-  'button[data-tooltip*="Send" i]',
-  'button.send-button',
-  'button[aria-label*="Stop" i]',
-  'button[mattooltip*="Stop" i]',
-  'button[aria-label*="Mic" i]',
-  'button[aria-label*="Microphone" i]',
-  'button[aria-label*="Use microphone" i]',
-];
-
-/**
- * Walk UP from a primary action button to the nearest HORIZONTAL row (its
- * visible siblings share a Y baseline), and return where to insert.
- *
- * Anchoring straight to `primary.parentElement` is not safe: on Gemini the
- * mic/send button often sits in a VERTICAL stack (mic under the model
- * dropdown), so inserting there stacks our button above the mic instead of
- * placing it inline. Finding a horizontal row first is what keeps the button
- * on the same baseline as the other composer actions.
- */
-function findHorizontalRow(primary: HTMLElement): { container: HTMLElement; ref: HTMLElement } | null {
-  // Accept a single-child container too — on platforms like Gemini the stop
-  // button can be the sole visible child, and if we require >= 2 we overshoot
-  // to a larger ancestor and land in a different position than the send state.
-  let ref: HTMLElement = primary;
-  let parent: HTMLElement | null = primary.parentElement;
-  while (parent && parent !== document.body) {
-    const visible = (Array.from(parent.children) as HTMLElement[])
-      .filter((c) => c.getBoundingClientRect().height > 0);
-    if (visible.length >= 1) {
-      const ys = visible.map((c) => {
-        const r = c.getBoundingClientRect();
-        return r.top + r.height / 2;
-      });
-      const isHorizontal = visible.length === 1 || Math.max(...ys) - Math.min(...ys) < 16;
-      if (isHorizontal && visible.length >= 2) {
-        return { container: parent, ref };
-      }
-      // Single-child horizontal row — only stop here if ref itself contains buttons
-      // (i.e. we're already at the right level, not at an outer wrapper).
-      if (isHorizontal && ref.querySelector("button") !== null) {
-        return { container: parent, ref };
-      }
-    }
-    ref = parent;
-    parent = parent.parentElement;
-  }
-  return null;
-}
-
-function findGeminiAnchor(): { container: HTMLElement; ref: HTMLElement } | null {
-  for (const sel of GEMINI_PRIMARY_SELECTORS) {
-    try {
-      const btn = document.querySelector<HTMLElement>(sel);
-      if (!btn) continue;
-      const r = btn.getBoundingClientRect();
-      if (r.width === 0 && btn.offsetParent === null) continue;
-      const row = findHorizontalRow(btn);
-      if (row) return row;
-    } catch { /* skip */ }
-  }
-  return null;
+function isShown(el: HTMLElement): boolean {
+  const r = el.getBoundingClientRect();
+  return r.width > 0 && r.height > 0;
 }
 
 /**
- * Find where to drop PromptBoost in the composer's trailing action row.
- *
- * 1. Scoped to this composer (walk UP from the input), collect the visible
- *    action buttons and pick the bottom-right-most one — that's the primary
- *    send / voice button.
- * 2. Walk UP from that button to the nearest horizontal row (see
- *    findHorizontalRow). That row holds each action button's wrapper.
- * 3. Insert our host as a sibling in that row, before the branch that contains
- *    the primary button — so we sit inline with mic / voice / send.
+ * The composer's trailing action cluster: starting from the bottom-right-most
+ * action button (send / voice), gather neighbours to its left that sit on the
+ * same row (vertically overlapping) and are close enough to read as one group.
  */
-function findComposerAnchor(inputEl: HTMLElement): { container: HTMLElement; ref: HTMLElement } | null {
-  // 1. Locate the primary action button within this composer.
-  let primary: HTMLElement | null = null;
+function findActionCluster(inputEl: HTMLElement): HTMLElement[] | null {
+  // Walk UP from the input until the enclosing composer contains action buttons.
   let scope: HTMLElement | null = inputEl;
+  let candidates: HTMLElement[] = [];
   for (let depth = 0; depth < 14 && scope && scope !== document.body; depth++) {
-    const candidates: HTMLElement[] = [];
+    const found = new Set<HTMLElement>();
     for (const sel of ACTION_BUTTON_SELECTORS) {
       try {
-        scope.querySelectorAll<HTMLElement>(sel).forEach((b) => {
-          const r = b.getBoundingClientRect();
-          if (b.offsetParent !== null || r.width > 0) candidates.push(b);
-        });
+        scope.querySelectorAll<HTMLElement>(sel).forEach((b) => { if (isShown(b)) found.add(b); });
       } catch { /* invalid selector — skip */ }
     }
-    if (candidates.length) {
-      // Bottom-right-most = the primary send/voice button.
-      primary = candidates.reduce((best, b) => {
-        const rb = b.getBoundingClientRect();
-        const rBest = best.getBoundingClientRect();
-        return rb.right + rb.bottom > rBest.right + rBest.bottom ? b : best;
-      });
-      break;
-    }
+    if (found.size) { candidates = [...found]; break; }
     scope = scope.parentElement;
   }
-  if (!primary) return null;
+  if (!candidates.length) return null;
 
-  // 2. Walk up to the horizontal action row.
-  const row = findHorizontalRow(primary);
-  if (row) return row;
+  const rects = new Map(candidates.map((b) => [b, b.getBoundingClientRect()] as const));
+  const primary = candidates.reduce((best, b) => {
+    const rb = rects.get(b)!, rBest = rects.get(best)!;
+    return rb.right + rb.bottom > rBest.right + rBest.bottom ? b : best;
+  });
+  const pr = rects.get(primary)!;
 
-  // Fallback: drop it right before the primary button.
-  return primary.parentElement ? { container: primary.parentElement, ref: primary } : null;
+  const sameRow = candidates
+    .filter((b) => {
+      const r = rects.get(b)!;
+      return r.top < pr.bottom && r.bottom > pr.top; // vertical overlap
+    })
+    .sort((a, b) => rects.get(b)!.right - rects.get(a)!.right);
+
+  const cluster: HTMLElement[] = [primary];
+  let left = pr.left;
+  for (const b of sameRow) {
+    if (b === primary) continue;
+    const r = rects.get(b)!;
+    if (r.right > pr.right + 1) continue; // never to the right of primary
+    if (left - r.right > CLUSTER_JOIN_DISTANCE) continue;
+    cluster.push(b);
+    left = Math.min(left, r.left);
+  }
+  return cluster;
 }
 
-function injectButton(inputEl: HTMLElement) {
-  const existing = document.getElementById(SHADOW_HOST_ID);
-  if (existing) {
-    // Keep it as long as it's still attached and visible. Only re-inject when
-    // the host has been detached (e.g. ChatGPT rebuilt the composer after a
-    // message) — re-injecting puts it back in the same spot in the action row.
-    if (existing.isConnected && existing.getBoundingClientRect().height > 0) return;
-    existing.remove();
-    shadowRef = null;
-  }
+let cachedInput: HTMLElement | null = null;
+let cachedCluster: HTMLElement[] | null = null;
+let lastFullScan = 0;
+let rafId = 0;
 
+function hidePlacer() {
+  if (placerEl) placerEl.style.visibility = "hidden";
+}
+
+function reposition(force = false) {
   const platform = detectPlatform();
-  // Gemini gets a direct-selector anchor so the position stays fixed across
-  // page refreshes and subsequent searches (the generic heuristic is sensitive
-  // to whether the stop or send button is active, causing the insertion level
-  // to shift).
-  const anchor = platform === "gemini" ? findGeminiAnchor() ?? findComposerAnchor(inputEl) : findComposerAnchor(inputEl);
+  if (platform === "unknown") { hidePlacer(); return; }
 
-  let insertContainer: HTMLElement | null = null;
-  let insertRef: HTMLElement | null = null;
+  const now = performance.now();
+  const stale =
+    force ||
+    !cachedInput || !cachedInput.isConnected || !isShown(cachedInput) ||
+    !cachedCluster || cachedCluster.some((b) => !b.isConnected) ||
+    now - lastFullScan > 600;
 
-  if (anchor) {
-    insertContainer = anchor.container;
-    insertRef = anchor.ref; // insert BEFORE the send/voice button
+  if (stale) {
+    lastFullScan = now;
+    cachedInput = findVisibleInputElement(platform);
+    cachedCluster = cachedInput ? findActionCluster(cachedInput) : null;
   }
 
-  // Ultimate fallback: append to the input element's parent
-  if (!insertContainer) insertContainer = inputEl.parentElement;
-  if (!insertContainer) return;
+  const input = cachedInput;
+  if (!input || !isShown(input)) { hidePlacer(); return; }
+  mountIfNeeded();
+  if (!placerEl) return;
 
-  // Match the height of the sibling we sit next to so flex centring lines our
-  // button up with the mic / voice / send icons instead of floating high or low.
-  const refHeight = insertRef ? Math.round(insertRef.getBoundingClientRect().height) : 0;
+  const ir = input.getBoundingClientRect();
+  if (ir.bottom < 0 || ir.top > window.innerHeight) { hidePlacer(); return; }
+
+  let right: number;
+  let top: number;
+
+  const shown = (cachedCluster ?? []).filter(isShown);
+  if (shown.length) {
+    const rects = shown.map((b) => b.getBoundingClientRect());
+    const clusterLeft = Math.min(...rects.map((r) => r.left));
+    const clusterTop = Math.min(...rects.map((r) => r.top));
+    const clusterBottom = Math.max(...rects.map((r) => r.bottom));
+    right = window.innerWidth - (clusterLeft - CLUSTER_GAP);
+    top = (clusterTop + clusterBottom) / 2 - BTN_HEIGHT / 2;
+  } else {
+    // No recognisable action buttons — tuck into the input's bottom-right corner.
+    right = window.innerWidth - (ir.right - 8);
+    top = ir.bottom - BTN_HEIGHT - 8;
+  }
+
+  top = Math.max(4, Math.min(top, window.innerHeight - BTN_HEIGHT - 4));
+  right = Math.max(4, right);
+
+  placerEl.style.right = `${Math.round(right)}px`;
+  placerEl.style.top = `${Math.round(top)}px`;
+  placerEl.style.visibility = "visible";
+}
+
+function scheduleReposition() {
+  if (rafId) return;
+  rafId = requestAnimationFrame(() => { rafId = 0; reposition(); });
+}
+
+function mountIfNeeded() {
+  if (hostEl && hostEl.isConnected) return;
+
+  document.getElementById(SHADOW_HOST_ID)?.remove();
 
   const host = document.createElement("div");
   host.id = SHADOW_HOST_ID;
-  host.style.cssText = [
-    "display:inline-flex",
-    "align-items:center",
-    "justify-content:center",
-    "align-self:center",
-    refHeight ? `height:${refHeight}px` : "",
-    "box-sizing:border-box",
-    "margin:0 2px",
-    "position:relative",
-    "z-index:9999",
-    "flex-shrink:0",
-  ].filter(Boolean).join(";");
-
+  host.style.cssText = "all:initial;position:fixed;top:0;left:0;width:0;height:0;overflow:visible;pointer-events:none;z-index:2147483646;";
   const shadow = host.attachShadow({ mode: "open" });
-  shadowRef = shadow;
 
   const styleEl = document.createElement("style");
   styleEl.textContent = styles;
   shadow.appendChild(styleEl);
 
-  const mountPoint = document.createElement("div");
-  shadow.appendChild(mountPoint);
+  const placer = document.createElement("div");
+  placer.style.cssText = `position:fixed;top:0;right:0;height:${BTN_HEIGHT}px;display:flex;align-items:center;pointer-events:auto;visibility:hidden;`;
+  shadow.appendChild(placer);
 
-  try {
-    if (insertRef && insertRef.parentNode === insertContainer) {
-      insertContainer.insertBefore(host, insertRef);
-    } else {
-      insertContainer.appendChild(host);
-    }
-  } catch {
-    try { insertContainer.appendChild(host); } catch { return; }
-  }
+  const mountPoint = document.createElement("div");
+  placer.appendChild(mountPoint);
+
+  document.documentElement.appendChild(host);
+  hostEl = host;
+  shadowRef = shadow;
+  placerEl = placer;
 
   createRoot(mountPoint).render(
     <App
@@ -515,41 +489,20 @@ function injectButton(inputEl: HTMLElement) {
   );
 }
 
-function cleanup() {
-  document.getElementById(SHADOW_HOST_ID)?.remove();
-  shadowRef = null;
-}
-
 // ─── Observer ─────────────────────────────────────────────────────────────────
 
-function tryInject() {
-  const platform = detectPlatform();
-  if (platform === "unknown") return;
-  const el = findVisibleInputElement(platform);
-  if (el) injectButton(el);
-}
-
 function startObserver() {
-  tryInject();
+  reposition(true);
 
-  let debounce: ReturnType<typeof setTimeout> | null = null;
-  const observer = new MutationObserver(() => {
-    if (debounce) clearTimeout(debounce);
-    // tryInject is a cheap no-op when the button is already attached + visible,
-    // so we can safely run it on every settle to recover from composer rebuilds.
-    debounce = setTimeout(tryInject, 150);
-  });
+  // Cheap, rAF-coalesced: reads cached rects, only rescans when stale.
+  new MutationObserver(scheduleReposition).observe(document.body, { childList: true, subtree: true });
+  window.addEventListener("scroll", scheduleReposition, { capture: true, passive: true });
+  window.addEventListener("resize", scheduleReposition, { passive: true });
+  document.addEventListener("input", scheduleReposition, true);
+  document.addEventListener("focusin", scheduleReposition, true);
 
-  observer.observe(document.body, { childList: true, subtree: true });
-
-  let lastHref = location.href;
-  setInterval(() => {
-    if (location.href !== lastHref) {
-      lastHref = location.href;
-      cleanup();
-      setTimeout(tryInject, 1200);
-    }
-  }, 1000);
+  // Safety net for layout shifts nothing above reports (animations, SPA nav).
+  setInterval(() => reposition(true), 800);
 
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === "TRIGGER_IMPROVE") {
