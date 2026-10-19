@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
-import { Search, Megaphone, Briefcase, GraduationCap, Code2, PenTool, Palette, Users, Mail, Heart, LayoutGrid, ArrowRight, LucideIcon } from "lucide-react";
+import { Search, Megaphone, Briefcase, GraduationCap, Code2, PenTool, Palette, Users, Mail, Heart, Linkedin, LayoutGrid, ArrowRight, LucideIcon } from "lucide-react";
 import { CATEGORY_LABELS, PromptTemplate, TemplateCategory, searchTemplates } from "@/data/templates";
 
 const CATEGORY_ICONS: Record<TemplateCategory, LucideIcon> = {
-  content: Megaphone, business: Briefcase, research: GraduationCap, coding: Code2,
+  content: Megaphone, linkedin: Linkedin, business: Briefcase, research: GraduationCap, coding: Code2,
   writing: PenTool, design: Palette, hr: Users, sales: Mail, personal: Heart,
 };
 
-const CATEGORIES: (TemplateCategory | "all")[] = ["all", "content", "business", "research", "coding", "writing", "design", "hr", "sales", "personal"];
+const CATEGORIES: (TemplateCategory | "all")[] = ["all", "content", "linkedin", "business", "research", "coding", "writing", "design", "hr", "sales", "personal"];
 
 interface TemplatesTabProps {
   onUse: (template: PromptTemplate) => void;

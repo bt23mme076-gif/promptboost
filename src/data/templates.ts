@@ -4,11 +4,12 @@
 // placeholders like [TOPIC] are left for the user to fill in before boosting.
 
 export type TemplateCategory =
-  | "content" | "business" | "research" | "coding"
+  | "content" | "linkedin" | "business" | "research" | "coding"
   | "writing" | "design" | "hr" | "sales" | "personal";
 
 export const CATEGORY_LABELS: Record<TemplateCategory, string> = {
   content: "Content Creation",
+  linkedin: "LinkedIn",
   business: "Business & Marketing",
   research: "Study & Research",
   coding: "Coding & Tech",
@@ -49,6 +50,50 @@ export const TEMPLATES: PromptTemplate[] = [
     title: "Newsletter Subject Lines",
     description: "10 high-open-rate subject lines from an email marketing specialist.",
     prompt: "You are an email marketing expert with a 40%+ open rate track record. Write 10 email subject lines for a newsletter about [TOPIC]. Mix curiosity, urgency, and clarity. Keep each under 60 characters. Audience: [AUDIENCE].",
+  },
+
+  // ── LinkedIn ──────────────────────────────────────────────────────────────
+  {
+    id: "linkedin-thought-leadership-post",
+    category: "linkedin",
+    title: "Thought Leadership Post",
+    description: "A scroll-stopping LinkedIn post that builds authority on a topic.",
+    prompt: "You are a LinkedIn ghostwriter whose posts regularly get 100k+ impressions. Write a thought leadership post about [TOPIC] for [AUDIENCE]. Start with a one-line hook under 12 words, use short paragraphs with line breaks, share one specific insight or personal lesson, and end with a question that invites comments. Keep it under 200 words. No hashtags in the body; add 3 relevant ones at the end.",
+  },
+  {
+    id: "linkedin-story-post",
+    category: "linkedin",
+    title: "Personal Story Post",
+    description: "Turn a real experience into a story with a clear takeaway.",
+    prompt: "You are a LinkedIn storytelling coach. Turn this experience into a LinkedIn post: [WHAT HAPPENED]. Structure it as: a hook, the situation, the turning point, the lesson learned, and a closing takeaway for [AUDIENCE]. Use a conversational tone, short lines, and no corporate jargon. Max 220 words.",
+  },
+  {
+    id: "linkedin-carousel-outline",
+    category: "linkedin",
+    title: "Carousel Outline",
+    description: "A slide-by-slide outline for a LinkedIn document carousel.",
+    prompt: "You are a LinkedIn content strategist who designs high-performing carousels. Create a 10-slide carousel outline about [TOPIC] for [AUDIENCE]. Slide 1: a bold title that promises a result. Slides 2–9: one idea per slide with a short headline and max 25 words of body text. Slide 10: a summary and a clear call to action. Suggest a visual idea for each slide.",
+  },
+  {
+    id: "linkedin-headline-about",
+    category: "linkedin",
+    title: "Headline & About Section",
+    description: "Rewrite your profile so recruiters and clients understand you fast.",
+    prompt: "You are a LinkedIn personal branding expert. Write 3 headline options (max 220 characters) and an About section (max 250 words) for [NAME], a [ROLE/PROFESSION]. Key strengths: [STRENGTHS]. Target audience: [RECRUITERS/CLIENTS/FOUNDERS]. The About section should open with a hook, show concrete results, and end with a clear call to action. Write in first person.",
+  },
+  {
+    id: "linkedin-connection-message",
+    category: "linkedin",
+    title: "Connection Request & DM",
+    description: "A short, non-spammy outreach message that gets replies.",
+    prompt: "You are a LinkedIn outreach specialist. Write a connection request (max 300 characters) and a follow-up DM for [PERSON/ROLE] at [COMPANY]. Reason for reaching out: [REASON]. Common ground: [SHARED INTEREST OR CONNECTION]. Be specific and genuine, offer value before asking for anything, and avoid pitches in the first message.",
+  },
+  {
+    id: "linkedin-comment-reply",
+    category: "linkedin",
+    title: "Smart Comment",
+    description: "Thoughtful comments that put you on an author's radar.",
+    prompt: "You are a LinkedIn growth coach. Write 3 comment options for this post: [PASTE POST]. Each should add a new insight, personal experience, or respectful counterpoint — not generic praise. Keep each under 50 words and end one of them with a question.",
   },
 
   // ── Business & Marketing ──────────────────────────────────────────────────

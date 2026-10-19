@@ -3,7 +3,7 @@ import { MODES, MODE_ORDER, PromptMode } from "@/utils/promptModes";
 import { TONES, LENGTHS, Tone, Length, VariationResult } from "@/utils/boostOptions";
 import { CATEGORY_LABELS, TemplateCategory, searchTemplates } from "@/data/templates";
 
-const CATEGORIES: (TemplateCategory | "all")[] = ["all", "content", "business", "research", "coding", "writing", "design", "hr", "sales", "personal"];
+const CATEGORIES: (TemplateCategory | "all")[] = ["all", "content", "linkedin", "business", "research", "coding", "writing", "design", "hr", "sales", "personal"];
 
 interface BoostPanelProps {
   mode: PromptMode;
