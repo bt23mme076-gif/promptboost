@@ -32,8 +32,12 @@ const PLATFORM_CONFIGS: PlatformConfig[] = [
     platform: "gemini",
     hostPatterns: ["gemini.google.com", "bard.google.com"],
     selectors: [
+      "rich-textarea div[contenteditable='true']",
       ".ql-editor[contenteditable='true']",
       "rich-textarea .ql-editor",
+      "div[contenteditable='true'][aria-label*='prompt' i]",
+      "div[contenteditable='true'][aria-label*='Enter' i]",
+      "textarea.paragraph-input",
       "div.textarea[contenteditable='true']",
       "div[contenteditable='true']",
     ],
@@ -121,7 +125,14 @@ export function detectPlatform(): Platform {
   return "unknown";
 }
 
-export function findInputElement(platform: Platform): HTMLElement | null {
+/**
+ * Returns the best candidate input element, skipping hidden/off-screen
+ * matches. Several platforms (Perplexity, Grok, Bolt, v0, Cursor) fall back
+ * to generic selectors like plain "textarea", which can match unrelated
+ * hidden textareas elsewhere on the page — visibility checking is what
+ * keeps those platforms from anchoring to the wrong element.
+ */
+export function findVisibleInputElement(platform: Platform): HTMLElement | null {
   const config = PLATFORM_CONFIGS.find((c) => c.platform === platform);
   if (!config) return null;
 
@@ -129,29 +140,12 @@ export function findInputElement(platform: Platform): HTMLElement | null {
     try {
       const elements = document.querySelectorAll<HTMLElement>(selector);
       for (const el of elements) {
-        // Skip hidden / off-screen elements
         if (el.offsetParent !== null || el.getBoundingClientRect().height > 0) {
           return el;
         }
       }
     } catch {
       // Invalid selector — skip
-    }
-  }
-  return null;
-}
-
-/** Returns the best candidate textarea watching for visibility */
-export function findVisibleInputElement(platform: Platform): HTMLElement | null {
-  const config = PLATFORM_CONFIGS.find((c) => c.platform === platform);
-  if (!config) return null;
-
-  for (const selector of config.selectors) {
-    try {
-      const el = document.querySelector<HTMLElement>(selector);
-      if (el) return el;
-    } catch {
-      // skip
     }
   }
   return null;

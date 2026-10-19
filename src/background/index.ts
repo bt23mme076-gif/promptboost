@@ -44,7 +44,7 @@ chrome.runtime.onConnect.addListener((port) => {
     const { prompt, platform, mode, context, model } = msg.payload;
 
     // Pick model: use payload model if provided, else default free model
-    const selectedModel = model ?? "llama-3.3-70b-versatile";
+    const selectedModel = model ?? "openai/gpt-oss-120b";
     const modeConfig = MODES[mode] ?? MODES.improve;
     const licenseKey = (settings as { licenseKey?: string }).licenseKey ?? null;
 
@@ -93,7 +93,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   let result = "";
 
   await streamFromBackend(
-    info.selectionText, "unknown", MODES[mode], "", "llama-3.3-70b-versatile", licenseKey,
+    info.selectionText, "unknown", MODES[mode], "", "openai/gpt-oss-120b", licenseKey,
     (chunk) => { result += chunk; },
     () => {
       chrome.tabs.sendMessage(tab.id!, {

@@ -6,6 +6,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["serve", "scripts", "-l", "3456", "--no-clipboard"],
       "port": 3456
+    },
+    {
+      "name": "boost-panel-harness",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "C:/Users/jatin/AppData/Local/Temp/claude/C--PROMPT/13f81899-e597-434d-b1f1-3e8c78ab5422/scratchpad/harness", "-l", "4174", "--no-clipboard"],
+      "port": 4174
     }
   ]
 }
