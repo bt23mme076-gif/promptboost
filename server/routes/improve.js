@@ -33,6 +33,17 @@ export const PRO_MODELS = [
 
 export const ALL_MODELS = [...FREE_MODELS, ...PRO_MODELS];
 
+// Groq-decommissioned model IDs that already-installed extension versions still
+// send. Route them to the current default so old installs keep working until
+// users update.
+const DEFAULT_FREE_MODEL = "openai/gpt-oss-120b";
+const LEGACY_FREE_MODELS = new Set([
+  "llama-3.3-70b-versatile",
+  "llama-3.1-8b-instant",
+  "mixtral-8x7b-32768",
+  "deepseek-r1-distill-llama-70b",
+]);
+
 // ─── GET /models — return catalogue to extension ──────────────────────────────
 
 router.get("/models", (req, res) => {
@@ -42,7 +53,8 @@ router.get("/models", (req, res) => {
 // ─── POST /improve (free) ─────────────────────────────────────────────────────
 
 router.post("/improve", freeLimiter, async (req, res) => {
-  const { prompt, platform, mode, context, model = "openai/gpt-oss-120b" } = req.body;
+  const { prompt, platform, mode, context, model: requestedModel = DEFAULT_FREE_MODEL } = req.body;
+  const model = LEGACY_FREE_MODELS.has(requestedModel) ? DEFAULT_FREE_MODEL : requestedModel;
 
   const modelMeta = FREE_MODELS.find((m) => m.id === model);
   if (!modelMeta) {
